@@ -48,8 +48,29 @@ async def health_check():
 # In development, the Vite dev server handles the frontend.
 # In production, FastAPI serves the built React app.
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')
+
+
+@app.get("/api/debug/paths")
+async def debug_paths():
+    """Debug endpoint to check file paths on deployed server."""
+    return {
+        "cwd": os.getcwd(),
+        "file": __file__,
+        "frontend_dist": FRONTEND_DIST,
+        "dist_exists": os.path.isdir(FRONTEND_DIST),
+        "dist_contents": os.listdir(FRONTEND_DIST) if os.path.isdir(FRONTEND_DIST) else [],
+        "parent_contents": os.listdir(os.path.dirname(FRONTEND_DIST)) if os.path.isdir(os.path.dirname(FRONTEND_DIST)) else [],
+    }
+
+
+# MUST mount static files after all API routes
 if os.path.isdir(FRONTEND_DIST):
     app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
+else:
+    @app.get("/")
+    async def root_fallback():
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(f"<h1>前端文件未找到</h1><p>路径: {FRONTEND_DIST}</p><p>存在: {os.path.isdir(FRONTEND_DIST)}</p><p>cwd: {os.getcwd()}</p>")
 
 
 if __name__ == "__main__":
